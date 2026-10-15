@@ -39,6 +39,22 @@
 3. **Topics** 一栏输入 `dsh-plugin` → 回车 → 再输 `deepseek-harness`、`dsh` 都行
 4. 点 **Save changes**
 
+### 顺手把 About 的描述也填上（可选）
+
+同一个齿轮里，**Description** 一栏粘贴下面这句，别人点进仓库就能一眼看懂：
+
+```
+Window control for DeepSeek Harness: maximize or true fullscreen on launch, minimize, keep the window always on top, and quit with a native confirmation dialog (Esc, double Esc, or Ctrl+Q).
+```
+
+中文版本（若偏好中文界面）：
+
+```
+给 DeepSeek Harness 加一页「窗口与退出」：启动时可选最大化或真全屏，支持最小化、窗口置顶，按 Esc 弹出原生确认框后再退出。
+```
+
+描述只陈述功能、不带夸张词 —— 这也是收录评审看重的写法。
+
 ---
 
 ## 第 3 步：提交收录 PR（纯网页操作，不需要 Git）
