@@ -1,9 +1,87 @@
 # dsh-window-control
 
+**English** · [中文正文见下方](#中文文档)
+
+## English
+
+Window control and quit confirmation for DeepSeek Harness. **Self-contained**: after install,
+the plugin's host half opens DSH's window channel by itself — no extra script, no Python, and
+no manual file editing.
+
+**What it does**
+
+| Capability | Notes |
+|---|---|
+| Master switch | On by default. Turned off, the plugin has no effect at all (no auto-fill, no shortcut quits, all other controls hidden) and it reverts the window state it changed |
+| Fullscreen / leave fullscreen | True window fullscreen (covers the taskbar), not a web-level fullscreen |
+| Maximize / restore | |
+| Minimize | Sends the window to the taskbar |
+| Always on top | Keeps DSH above other windows |
+| Quit DeepSeek Harness | Always shows a **native confirmation dialog** first |
+| Fill the screen on launch | Three choices: **maximize (default)** / true fullscreen / off. Applies immediately, no restart |
+| Quit shortcut | Four choices: **Esc (default)** / double Esc / Ctrl+Q / off |
+| Leave fullscreen with Esc | On by default. In true fullscreen, Esc leaves fullscreen instead of asking to quit |
+
+Entry point: **Settings → Window & Quit**.
+
+**Install**
+
+```
+dsh plugin add dsh-window-control
+```
+
+> ⚠️ **The first install needs two DSH restarts.** The DSH main process loads its code at
+> launch, and the plugin can only patch the window channel while DSH is already running — so
+> the first launch installs the channel and the second launch is the one that reads it. Quit
+> DSH completely (tray icon → Quit; closing the window only hides it to the tray) between the
+> two launches. Until then the settings page says the channel is not active yet; that is
+> expected, not a failure. After those two restarts it never needs another one.
+
+**Why it touches the host.** The DSH main process exposes no IPC channel for maximize,
+minimize, always-on-top or quit — the stock `app.asar` handles none of them, and the main
+window hides to the tray on close. The plugin therefore injects a small set of IPC channels
+into `resources/app.asar` once (equal-length replacement, archive size unchanged, integrity
+hash recomputed, backup kept as `app.asar.orig`). This is the same approach other DSH plugins
+that need host behaviour take. See the Chinese section *「窗口通道是怎么装上去的」* for the
+byte budget, upgrade and safety details.
+
+**Cross-platform.** Windows (user-level install) is tested and working. On Windows under
+`Program Files` the first install needs one elevated run. On macOS, modifying `app.asar` can
+invalidate code signing — the plugin tells you if that happens and `restore` reverts it. On
+Linux it works but with fewer path fallbacks. The archive is located by deriving the install
+directory from the running DSH executable, so custom install paths are supported.
+
+**Manual commands** (troubleshooting)
+
+```
+node lib/bridge-cli.mjs status      # is the channel installed?
+node lib/bridge-cli.mjs install     # install it (add --force to reinstall)
+node lib/bridge-cli.mjs restore     # put the original app.asar back
+node lib/bridge-cli.mjs uninstall   # remove the channel and clean up
+```
+
+**Uninstall.** Revert the bridge **first**, then remove the plugin:
+`node lib/bridge-cli.mjs uninstall`, or set `autoInstall: false` in the profile's
+`cordis.patch.yml` and restart DSH once (that reverts it). Nothing can do this automatically
+once the plugin is gone, because a removed plugin is no longer loaded.
+
+**Self-tests** (both run against mocks; neither touches your DSH install)
+
+```
+node _selftest.mjs          # browser half, 76 checks
+node _bridge-selftest.mjs   # bridge engine, 48 checks, uses a tiny fake archive
+```
+
+MIT licensed. The rest of this document is in Chinese and goes into more depth.
+
+---
+
+## 中文文档
+
 DeepSeek Harness 的**窗口控制 + 退出**插件。**自包含**：装好之后由插件自己在后台
 一次性打通 DSH 的窗口通道，不需要额外脚本、不需要 Python、也不需要你手动改任何文件。
 
-## 功能
+### 功能
 
 | 能力 | 说明 |
 |---|---|
@@ -23,7 +101,7 @@ DeepSeek Harness 的**窗口控制 + 退出**插件。**自包含**：装好之�
 
 ![启动行为三选一与退出快捷键，含真全屏提示](screenshots/settings-startup.png)
 
-## 安装
+### 安装
 
 ```
 dsh plugin --profile desktop add dsh-window-control
@@ -47,7 +125,7 @@ dsh plugin --profile desktop add dsh-window-control
 > 打桥前它还会把 `app.asar.orig` 与当前归档核对一遍，对不上就重做备份 ——
 > 这样备份永远对应你正在用的这一版，不会变成「上一个版本」的残留。
 
-## 插件总开关（「关闭 = 等同未安装」）
+### 插件总开关（「关闭 = 等同未安装」）
 
 总开关是唯一的全局开关，它关掉后：
 
@@ -58,7 +136,7 @@ dsh plugin --profile desktop add dsh-window-control
 
 这些判断每次都重新读配置，所以**改开关立即生效，不需要重启**。
 
-## 为什么必须改一次宿主（而不是像普通插件那样）
+### 为什么必须改一次宿主（而不是像普通插件那样）
 
 DSH 的插件体系有两半，两边都碰不到主进程：
 
@@ -82,7 +160,7 @@ DSH 的插件体系有两半，两边都碰不到主进程：
 所以窗口控制必须改宿主。这也正是 `dsh-desktop-tray` 之类插件同样自带
 `main-patch.js` 的原因。
 
-## 能不能做到「装完即用」或「只重启一次」
+### 能不能做到「装完即用」或「只重启一次」
 
 做不到 —— 这是 DSH 的结构决定的，不是没做优化。三条都验证过：
 
@@ -113,7 +191,7 @@ DSH 的插件体系有两半，两边都碰不到主进程：
 `client.js` 的 `bridge()` 已经同时认 `window.dshDesktop.windowControl` 这个官方预留位，
 届时**不需要改一行代码**，也不用再重启两次。
 
-## 窗口通道是怎么装上去的
+### 窗口通道是怎么装上去的
 
 `lib/asar-bridge.js` 对 `resources/app.asar` 里两个文件做**等长就地替换**：把两段
 纯文档注释换成注入代码（空格补齐到原长度），并**原位更新**头部里这两个文件的
@@ -139,7 +217,7 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 `>= 2` 表示支持退出前的原生确认框，`>= 3` 额外支持最小化与窗口置顶。
 渲染端对 v3 能力做了方法级探测，旧桥上「最小化 / 置顶」会自动置灰而不是点了没反应。
 
-### 字节预算
+#### 字节预算
 
 注入块是**等长替换**，容量有限，实测占用：
 
@@ -151,7 +229,7 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 通道名因此在代码里统一拼成 `P + 后缀`（`P = "dsh-desktop:"`）—— 写完整字符串的话
 6 条通道就放不下了。想再加功能，得先压缩现有实现腾字节。
 
-### 版本升级
+#### 版本升级
 
 桥一旦装上，锚点注释就没了，无法原地把旧代码换成新代码 —— 升级只能「先用
 `app.asar.orig` 还原成原版，再重新注入」。所以 `install()` 会比较归档里的实际版本与
@@ -160,7 +238,7 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 唯一的例外是备份丢失：没有原版备份就无法还原，也就无法升级。这种情况下插件会明确
 提示，而不是静默停留在旧版本。
 
-### 安全性
+#### 安全性
 
 - **首次改动前一定先备份**到 `app.asar.orig`。
 - **注入前全量自检**：按官方同一套算法重建目标条目并复算 sha256、核对头部等长、
@@ -177,7 +255,7 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 - **读取不再整档载入**：只解析归档头 + 定向读两个目标条目（实测 93 ms/115 MB → 约 25 ms/4 MB），
   内存峰值也从约 120 MB 降到几 MB。
 
-## 手动操作（排障用）
+### 手动操作（排障用）
 
 宿主半边会自动处理，正常情况用不到。需要时：
 
@@ -201,7 +279,7 @@ node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用�
 `cordis.patch.yml` 里给本插件加 `config: { autoInstall: false }` 即可，此时插件只剩
 渲染端那部分能力。
 
-## 卸载 / 还原
+### 卸载 / 还原
 
 ```bat
 :: 1) 完全退出 DSH，然后把安装目录还原成原版
@@ -223,7 +301,7 @@ dsh plugin --profile desktop remove dsh-window-control
 宁可这一次安装失败，也不会把一个半写状态的 `app.asar` 留在安装目录里 —— 那种状态下 DSH 连启动都做不到。
 结果会记进状态文件的 `rolledBack` 字段。
 
-### 卸载前请先撤桥（这一步没法自动化，原因见下）
+#### 卸载前请先撤桥（这一步没法自动化，原因见下）
 
 ```bat
 :: 1) 完全退出 DSH 后执行：撤桥 + 清掉备份
@@ -243,7 +321,7 @@ dsh plugin --profile desktop remove dsh-window-control
 - **自动**：在 profile 的 `cordis.patch.yml` 里给本插件加 `autoInstall: false` 并重启一次 ——
   宿主半边会主动撤桥并清掉备份，确认 DSH 回到原版后再把插件移除即可。
 
-## 跨平台情况（换一台电脑还能不能用）
+### 跨平台情况（换一台电脑还能不能用）
 
 先说结论：**Windows 上换机能用**；其它平台能用，但各有前提。
 
@@ -273,7 +351,7 @@ dsh plugin --profile desktop remove dsh-window-control
 这不属于插件能处理的范围，遇到时表现为写入失败（插件会自动回滚并保持原样），
 把安装目录加入白名单即可。
 
-## 为什么「启动自动铺满」的默认值是「最大化」而不是「真全屏」
+### 为什么「启动自动铺满」的默认值是「最大化」而不是「真全屏」
 
 DSH 主窗口在 Windows 上是这么建的：
 
@@ -294,7 +372,7 @@ new BrowserWindow({
 > 顺带一提：DSH 渲染端用 `html[data-windows-titlebar]` + `--dsh-windows-titlebar-height: 40px`
 > 给这 40px 预留了位置，所以最大化状态下布局与原生按钮是严丝合缝的。
 
-## 退出为什么自己弹框（而不是用 DSH 自带的）
+### 退出为什么自己弹框（而不是用 DSH 自带的）
 
 DSH 主进程确实有退出确认（`before-quit` → `DesktopQuitConfirmation`），但它是**有条件的**：
 
@@ -321,7 +399,7 @@ function resolveDesktopQuitPrompt(inspection) {
 
 桥缺失时渲染端退回 `window.confirm`，保证「退出必确认」在任何情况下都成立。
 
-## 配置存放位置
+### 配置存放位置
 
 渲染端把设置存在 `localStorage`（origin = `dsh-app://app`），键名
 `dsh-window-control:settings`，字段：`enabled`（总开关）、`startMode`
@@ -332,7 +410,7 @@ function resolveDesktopQuitPrompt(inspection) {
 `true`（旧默认）→ `'maximized'`（不再默认真全屏，避免右上角按钮消失），
 `false` → `'off'`。旧字段不会被删除，只是不再使用。
 
-## 目录结构
+### 目录结构
 
 ```
 lib/index.js         宿主半边：每次启动自动检测 / 安装 / 记状态；autoInstall=false 时撤桥
@@ -349,7 +427,7 @@ cordis.patch.yml     bundle 层挂载声明
 拿不到就按 `navigator.language` 选内置字典 —— 两条路都可用，所以不会因为
 locale 服务缺席而没文案。
 
-## 开发自测
+### 开发自测
 
 ```bat
 node _selftest.mjs          :: 渲染端沙箱自测，当前 53/53 通过
