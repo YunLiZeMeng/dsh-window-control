@@ -82,12 +82,13 @@ Window control for DeepSeek Harness: maximize or true fullscreen on launch, mini
    name: YunLiZeMeng/dsh-window-control
    category: ui
    description:
-     en: 'Adds a Window & Quit page to DSH settings - choose maximize or true fullscreen on launch, minimize, keep the window always on top, and quit with a native confirmation dialog (Esc, double Esc, or Ctrl+Q).'
-     zh: '在 DSH 设置里加一页「窗口与退出」：启动时可选最大化或真全屏，支持最小化、窗口置顶，以及按 Esc（或双击 Esc / Ctrl+Q）弹出原生确认框后再退出。'
+     en: 'Adds a Window & Quit page to DSH settings - choose maximize or true fullscreen on launch, minimize, keep the window always on top, and quit with a native confirmation dialog (Esc, double Esc, or Ctrl+Q). The window channel is installed by the plugin itself, and the first install needs two DSH restarts before it takes effect.'
+     zh: '在 DSH 设置里加一页「窗口与退出」：启动时可选最大化或真全屏，支持最小化、窗口置顶，以及按 Esc（或双击 Esc / Ctrl+Q）弹出原生确认框后再退出。窗口通道由插件自己安装，首次安装需重启两次 DSH 生效。'
    ```
 
    > ⚠️ 描述里**不能出现 `: `（半角冒号+空格）**，否则 YAML 会解析失败。
    > 上面两条都加了单引号，既避开冒号问题，也让 `&`、`#` 这类符号绝对安全 —— **请连引号一起复制**。
+   > 末尾那句重启提示是刻意保留的：新用户装完发现按钮是灰的时，看到这行就不会以为是插件坏了。
 
 7. 页面下方点 **Commit changes**，标题保持默认即可
 
