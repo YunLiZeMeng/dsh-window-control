@@ -209,6 +209,11 @@ sandbox.window.document = sandbox.document
 // 避免上一个模块实例的定时链污染后面的断言。
 const pluginTimers = new Set()
 const pluginIntervals = new Set()
+/**
+ * 覆盖轮询周期（毫秒）；0 表示用插件自己写死的值。
+ * 自愈回归测试需要连看好几轮轮询，靠这里把周期压短，不然整个套件要白等好几秒。
+ */
+let pollIntervalOverride = 0
 sandbox.window.setTimeout = (fn, ms) => {
   const id = setTimeout(() => {
     pluginTimers.delete(id)
@@ -222,7 +227,7 @@ sandbox.window.clearTimeout = (id) => {
   clearTimeout(id)
 }
 sandbox.window.setInterval = (fn, ms) => {
-  const id = setInterval(fn, ms)
+  const id = setInterval(fn, pollIntervalOverride || ms)
   pluginIntervals.add(id)
   return id
 }
@@ -1029,6 +1034,90 @@ check('quitKey=off：两种方式都不触发', quitCalls.length === 0, `quit=${
 pressKey = await bootKey({ ...keyBase, quitKey: 'bogus' })
 await pressKey({ key: 'Escape' })
 check('quitKey 非法值回落为 escape', quitCalls.length === 1, `quit=${quitCalls.length}`)
+store.clear()
+
+// ---- 回归：全屏标记和真实窗口脱节时的自愈 ----
+// Windows 上「最小化 → 还原」以及「退出真全屏」都可能让 Electron 的 isFullScreen()
+// 和真实窗口脱节：窗口已经变回普通窗口，标记却还赖着 true。于是面板一直显示「真全屏」、
+// 按钮也写「退出全屏」，用户怎么点都进不去真全屏。
+// 这几条钉住 healWindowState()：该清的时候清、该补的时候补、不该动的时候别乱动。
+killPluginTimers()
+pollIntervalOverride = 40
+const prevStateFn = v2Bridge.state
+v2Bridge.state = () => Promise.resolve({ ...hw })
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// ① 插件并不想要全屏，但「最小化 → 还原」后桥仍报真全屏 → 必须清掉
+await bootWith({ enabled: true, startMode: 'maximized' }, 1)
+hw.minimized = false
+await sleep(60)
+hw.minimized = true
+await sleep(60)
+hw.minimized = false
+hw.fullscreen = true
+fsCalls.length = 0
+await sleep(60)
+check(
+  '还原后卡住的真全屏标记被自愈清掉',
+  fsCalls.includes(false),
+  `fs=${JSON.stringify(fsCalls)}`,
+)
+
+// ② 插件想要全屏，却被还原成了普通窗口 → 补一次进入
+await bootWith({ enabled: true, startMode: 'fullscreen' }, 1)
+check(
+  '真全屏启动时确实进了真全屏',
+  fsCalls.includes(true),
+  `fs=${JSON.stringify(fsCalls)}`,
+)
+hw.minimized = false
+await sleep(60)
+hw.minimized = true
+await sleep(60)
+hw.minimized = false
+hw.fullscreen = false
+fsCalls.length = 0
+await sleep(60)
+check(
+  '还原后想要全屏时会补一次进入',
+  fsCalls.includes(true),
+  `fs=${JSON.stringify(fsCalls)}`,
+)
+
+// ③ Esc 退出全屏后标记没跟上 → 随后几秒内重试清理
+await bootWith(
+  { enabled: true, startMode: 'fullscreen', escQuit: true, escGuarded: false, escExitFullscreen: true },
+  1,
+)
+hw.minimized = false
+await sleep(60)
+const escLatest = (winListeners.get('keydown') || []).slice(-1)[0]
+fsCalls.length = 0
+escLatest(new MockEvent('keydown', { key: 'Escape' }))
+await sleep(20)
+check('Esc 退出全屏仍然发出 setFullscreen(false)', fsCalls.includes(false), `fs=${JSON.stringify(fsCalls)}`)
+hw.fullscreen = true // 窗口退出了全屏，标记却没退掉
+fsCalls.length = 0
+await sleep(60)
+check(
+  '退出全屏没退掉时会被重试清掉',
+  fsCalls.includes(false),
+  `fs=${JSON.stringify(fsCalls)}`,
+)
+
+// ④ 反向保险：一切正常时轮询不得乱发全屏 IPC
+await bootWith({ enabled: true, startMode: 'maximized' }, 1)
+hw.minimized = false
+fsCalls.length = 0
+await sleep(120)
+check(
+  '状态正常时轮询不会乱动全屏',
+  fsCalls.length === 0,
+  `fs=${JSON.stringify(fsCalls)}`,
+)
+killPluginTimers()
+pollIntervalOverride = 0
+v2Bridge.state = prevStateFn
 store.clear()
 
 // ---------------- 容错路径：locale 接入 / 插槽未就绪 ----------------

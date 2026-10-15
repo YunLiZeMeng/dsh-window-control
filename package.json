@@ -1,6 +1,6 @@
 {
   "name": "dsh-window-control",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Window control and quit confirmation for DeepSeek Harness: choose maximize (keeps the caption buttons) or true fullscreen on launch, then maximize / restore / minimize / always-on-top at any time, and quit with a native confirmation dialog (Esc, double Esc, or Ctrl+Q). Self-contained: the host half installs the one-time asar bridge itself, so no external script or Python runtime is needed. The first install takes effect after two DSH restarts.",
   "type": "module",
   "license": "MIT",
