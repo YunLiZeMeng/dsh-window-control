@@ -1,0 +1,9 @@
+# 发布包里不需要的东西
+node_modules/
+*.tgz
+*.log
+
+# 系统垃圾文件
+.DS_Store
+Thumbs.db
+desktop.ini

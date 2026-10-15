@@ -1,0 +1,75 @@
+{
+  "name": "dsh-window-control",
+  "version": "1.4.1",
+  "description": "Window control for DeepSeek Harness - maximize (keeps the Windows caption buttons) or true fullscreen on launch, maximize/restore, read window state, and quit-with-confirmation on Esc. Self-contained: the host half installs the required one-time asar bridge itself, so no external script or Python runtime is needed.",
+  "type": "module",
+  "license": "MIT",
+  "author": "YunLiZeMeng",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YunLiZeMeng/dsh-window-control.git"
+  },
+  "homepage": "https://github.com/YunLiZeMeng/dsh-window-control#readme",
+  "bugs": {
+    "url": "https://github.com/YunLiZeMeng/dsh-window-control/issues"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./bridge": "./lib/asar-bridge.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-window-bridge": "lib/bridge-cli.mjs"
+  },
+  "scripts": {
+    "selftest": "node _selftest.mjs && node _bridge-selftest.mjs",
+    "selftest:client": "node _selftest.mjs",
+    "selftest:bridge": "node _bridge-selftest.mjs",
+    "bridge:status": "node lib/bridge-cli.mjs status",
+    "bridge:check": "node lib/bridge-cli.mjs check",
+    "bridge:bench": "node lib/bridge-cli.mjs bench",
+    "bridge:uninstall": "node lib/bridge-cli.mjs uninstall"
+  },
+  "files": [
+    "lib",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "window",
+    "fullscreen",
+    "maximize",
+    "quit",
+    "escape",
+    "caption-buttons",
+    "taskbar",
+    "self-contained",
+    "auto-install"
+  ]
+}

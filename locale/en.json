@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Window & Quit (dsh-window-control)",
+    "description": "Fill the screen on launch (maximize keeps the Windows minimize / maximize / close buttons, or go true fullscreen), maximize and restore at any time, and quit with Esc - a native confirmation dialog appears first. Esc also leaves fullscreen. The window channel is bundled and installed by the plugin itself."
+  }
+}
