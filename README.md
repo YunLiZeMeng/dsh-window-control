@@ -14,7 +14,7 @@ itself — no extra script, no Python, and no manual file editing.
 |---|---|
 | Master switch | On by default. Turned off, the plugin has no effect at all (no auto-fill, no shortcut quits, all other controls hidden) and it reverts the window state it changed |
 | Fullscreen / leave fullscreen | True window fullscreen (covers the taskbar), not a web-level fullscreen |
-| Maximize / restore | |
+| Maximize / restore | Maximizes and restores the window |
 | Minimize | Sends the window to the taskbar |
 | Always on top | Keeps DSH above other windows |
 | Quit DeepSeek Harness | Always shows a **native confirmation dialog** first |
