@@ -44,13 +44,13 @@
 同一个齿轮里，**Description** 一栏粘贴下面这句，别人点进仓库就能一眼看懂：
 
 ```
-Tired of going fullscreen by hand every time you open Harness? This plugin fills the screen for you - auto-maximize or true fullscreen on launch, minimize, keep the window always on top, and quit with a native confirmation dialog (Esc, double Esc, or Ctrl+Q).
+Tired of going fullscreen by hand every time you open Harness? This plugin auto-fills the screen - maximize or true fullscreen on launch, minimize, keep always on top, and quit only after a native confirmation dialog (Esc, double Esc, or Ctrl+Q). Self-contained - no script or Python needed; first install takes two DSH restarts.
 ```
 
 中文版本（若偏好中文界面）：
 
 ```
-嫌每次打开 Harness 都要手动全屏？这个插件帮你自动铺满 - 启动时可选最大化或真全屏，支持最小化、窗口置顶，按 Esc 弹出原生确认框后再退出。
+如果你嫌每次打开 Harness 都要手动全屏，这个插件可以帮你自动铺满：启动时自动最大化（保留右上角窗口按钮）或真全屏；随时可最大化／还原／最小化／窗口置顶；退出前弹原生确认框，快捷键可选 Esc、双击 Esc 或 Ctrl+Q，且全屏下 Esc 先退出全屏。窗口通道由插件自己安装，无需脚本或 Python，首次安装需重启两次 DSH 生效。
 ```
 
 描述只陈述功能、不带夸张词 —— 这也是收录评审看重的写法。
@@ -82,8 +82,8 @@ Tired of going fullscreen by hand every time you open Harness? This plugin fills
    name: YunLiZeMeng/dsh-window-control
    category: ui
    description:
-    en: 'Tired of going fullscreen by hand every time you open Harness? This plugin does it for you - auto-maximize (keeps the window buttons) or true fullscreen on launch, minimize, always on top, and a native confirmation dialog before quitting (Esc, double Esc, or Ctrl+Q). The window channel is installed by the plugin itself, and the first install needs two DSH restarts before it takes effect.'
-    zh: '如果你嫌每次打开 Harness 都要手动全屏，这个插件可以帮你自动铺满 - 启动时自动最大化（保留右上角窗口按钮）或真全屏，支持最小化、窗口置顶，以及按 Esc（或双击 Esc / Ctrl+Q）弹出原生确认框后再退出。窗口通道由插件自己安装，首次安装需重启两次 DSH 生效。'
+    en: 'Tired of going fullscreen by hand every time you open Harness? This plugin fills the screen for you - auto-maximize (keeps the window buttons) or true fullscreen on launch, then maximize / restore / minimize / always-on-top anytime. It quits only after a native confirmation dialog - Esc, double Esc, or Ctrl+Q; in fullscreen, Esc leaves fullscreen first. The window channel installs itself, so no script or Python is needed; the first install takes effect after two DSH restarts.'
+    zh: '如果你嫌每次打开 Harness 都要手动全屏，这个插件可以帮你自动铺满：启动时自动最大化（保留右上角窗口按钮）或真全屏；随时可最大化／还原／最小化／窗口置顶；退出前弹原生确认框，快捷键可选 Esc、双击 Esc 或 Ctrl+Q，且全屏下 Esc 先退出全屏。窗口通道由插件自己安装，无需脚本或 Python，首次安装需重启两次 DSH 生效。'
    ```
 
    > ⚠️ 描述里**不能出现 `: `（半角冒号+空格）**，否则 YAML 会解析失败。

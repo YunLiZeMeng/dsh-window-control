@@ -27,6 +27,12 @@
   （53→76、39→48、条目数 11470→12965）。
   README 中英文开头的第一句也一并换成同一句话。仅文案改动，无代码变更。
 
+- **统一并精炼四处插件描述**：把 `locale/zh.json`、`locale/en.json`、`package.json` 的
+  `description`、`PUBLISHING.md` 里的上架 YAML 与仓库 About 文案全部对齐到同一套措辞；
+  中文描述补齐「还原」「全屏下 Esc 先退出全屏」两项能力，英文用
+  「window channel installs itself」统一口径，并回避 YAML 里的 `: `（半角冒号+空格）。
+  仅文案改动，无代码变更。
+
 ## [1.4.1] — 2026-10-14
 
 ### 新增
