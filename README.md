@@ -4,9 +4,9 @@
 
 ## English
 
-Window control and quit confirmation for DeepSeek Harness. **Self-contained**: after install,
-the plugin's host half opens DSH's window channel by itself — no extra script, no Python, and
-no manual file editing.
+Tired of going fullscreen by hand every time you open Harness? This plugin fills the screen for
+you. **Self-contained**: after install, the plugin's host half opens DSH's window channel by
+itself — no extra script, no Python, and no manual file editing.
 
 **What it does**
 
@@ -78,8 +78,8 @@ MIT licensed. The rest of this document is in Chinese and goes into more depth.
 
 ## 中文文档
 
-DeepSeek Harness 的**窗口控制 + 退出**插件。**自包含**：装好之后由插件自己在后台
-一次性打通 DSH 的窗口通道，不需要额外脚本、不需要 Python、也不需要你手动改任何文件。
+如果你嫌每次打开 Harness 都要手动全屏，这个插件可以帮你自动铺满。**自包含**：装好之后
+由插件自己在后台一次性打通 DSH 的窗口通道，不需要额外脚本、不需要 Python、也不需要你手动改任何文件。
 
 ### 功能
 

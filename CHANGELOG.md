@@ -4,6 +4,17 @@
 
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 变更
+
+- **重写插件描述，开头改用「嫌每次打开 Harness 都要手动全屏」这个痛点切入**，再接上插件
+  真正能做的事（自动铺满、最小化 / 置顶、退出确认）。旧描述一上来就讲「加了一页设置」，
+  对只在市场列表里扫一眼的人没有吸引力 —— 现在第一句就能对上他要解决的问题。
+  同步改了四处：`locale/zh.json`、`locale/en.json`、`package.json` 的 `description`、
+  以及 `PUBLISHING.md` 里上架用的 YAML（中英文）和仓库 About 建议文案；
+  README 中英文开头的第一句也一并换成同一句话。仅文案改动，无代码变更。
+
 ## [1.4.1] — 2026-10-14
 
 ### 新增

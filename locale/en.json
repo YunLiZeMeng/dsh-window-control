@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Window & Quit (dsh-window-control)",
-    "description": "Adds a Window & Quit page to DSH settings: choose maximize (keeps the window buttons in the top-right corner) or true fullscreen on launch, then maximize / restore / minimize / always-on-top at any time. Quit with a native confirmation dialog, triggered by Esc, double Esc or Ctrl+Q - Esc leaves fullscreen first. The window channel is installed by the plugin itself, so no extra script or Python is needed; the first install takes effect after two DSH restarts."
+    "description": "Tired of going fullscreen by hand every time you open Harness? This plugin fills the screen for you: auto-maximize (keeps the window buttons) or true fullscreen on launch, then maximize / restore / minimize / always-on-top at any time. Quit with a native confirmation dialog, triggered by Esc, double Esc or Ctrl+Q - Esc leaves fullscreen first. The window channel is installed by the plugin itself, so no extra script or Python is needed; the first install takes effect after two DSH restarts."
   }
 }
