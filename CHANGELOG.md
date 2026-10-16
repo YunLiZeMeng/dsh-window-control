@@ -25,7 +25,12 @@
   两条路径（命令行 `uninstall` / 开关 `autoInstall:false`），并补上「只删插件不撤桥的后果」、
   「`restore` 与 `uninstall` 的区别」。顺手修正「开发自测」里过时的自测数字
   （53→76、39→48、条目数 11470→12965）。
-  README 中英文开头的第一句也一并换成同一句话。仅文案改动，无代码变更。
+- **全量核查（2026-10-16）**：用 `DSH_ASAR` 分别指向当前归档与原版备份 `.orig` 实测，
+  两者条目数同为 **12967**、文件大小同为 121348951 字节（桥不改条目数、不改总大小）。
+  此前正文写的 12965 是过时数字，已更正 README 两处。
+  同时复核：自测 76/76 + 48/48；`package.json` 与 `locale/*.json` 描述一致；
+  YAML 上架描述无半角冒号+空格；仓库 topics 含 `dsh-plugin`。
+  PR 仍 `open`、CI 待维护者批准（fork PR 的正常门禁）。
 
 - **统一并精炼四处插件描述**：把 `locale/zh.json`、`locale/en.json`、`package.json` 的
   `description`、`PUBLISHING.md` 里的上架 YAML 与仓库 About 文案全部对齐到同一套措辞；
