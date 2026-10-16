@@ -26,16 +26,24 @@ Entry point: **Settings → Window & Quit**.
 
 **Install**
 
-```
-dsh plugin add dsh-window-control
-```
+1. Add the plugin (replace the profile name to match your setup):
 
-> ⚠️ **The first install needs two DSH restarts.** The DSH main process loads its code at
-> launch, and the plugin can only patch the window channel while DSH is already running — so
-> the first launch installs the channel and the second launch is the one that reads it. Quit
-> DSH completely (tray icon → Quit; closing the window only hides it to the tray) between the
-> two launches. Until then the settings page says the channel is not active yet; that is
-> expected, not a failure. After those two restarts it never needs another one.
+   ```
+   dsh plugin add dsh-window-control
+   ```
+
+2. Quit DSH completely - right-click the tray icon and choose Quit. Closing the window only
+   hides it to the tray, which is not a quit and the bridge will not be touched.
+3. Reopen DSH (first launch) - this launch installs the window channel. The Settings -> Window &
+   Quit page will say the channel is not active yet; **that is expected, not a failure**.
+4. Quit DSH completely again and reopen it (second launch) - this launch reads the channel.
+   Open Settings -> Window & Quit: the warning is gone and every button works. No more restarts
+   are needed after this.
+
+> ⚠️ **Why two restarts?** The DSH main process loads its code at launch, and the plugin can only
+> patch the window channel while DSH is already running — so the first launch installs the channel
+> and the second launch is the one that reads it. Quit DSH completely (tray icon → Quit; closing
+> the window only hides it to the tray) between the two launches.
 
 **Why it touches the host.** The DSH main process exposes no IPC channel for maximize,
 minimize, always-on-top or quit — the stock `app.asar` handles none of them, and the main
@@ -60,10 +68,29 @@ node lib/bridge-cli.mjs restore     # put the original app.asar back
 node lib/bridge-cli.mjs uninstall   # remove the channel and clean up
 ```
 
-**Uninstall.** Revert the bridge **first**, then remove the plugin:
-`node lib/bridge-cli.mjs uninstall`, or set `autoInstall: false` in the profile's
-`cordis.patch.yml` and restart DSH once (that reverts it). Nothing can do this automatically
-once the plugin is gone, because a removed plugin is no longer loaded.
+**Uninstall.** Clean uninstall is always two steps: revert the bridge **first**, then remove the
+plugin - order matters.
+
+> Why it cannot be automatic: once the plugin is removed from the profile, its host half is no
+> longer loaded, so no code runs again - there is no "next launch discovers the bridge is still
+> there and reverts it" opportunity. That is a hard limit of the DSH plugin model.
+
+**Path A - command line (cleanest, recommended)**
+
+1. Quit DSH completely.
+2. Revert the bridge and clear the backup: `node lib/bridge-cli.mjs uninstall`.
+3. Remove the plugin: `dsh plugin remove dsh-window-control`.
+
+**Path B - no command line**
+
+1. Add `config: { autoInstall: false }` for this plugin in the profile's `cordis.patch.yml`.
+2. Quit DSH completely and reopen once - the host half reverts the bridge and clears the backup.
+3. Once DSH is back to stock, remove the plugin from the profile.
+
+To just revert without removing, use `node lib/bridge-cli.mjs restore` - it keeps the
+`app.asar.orig` backup (use this if you plan to reinstall later). Leaving the bridge in place and
+only removing the plugin also "works" - it becomes dead code - and DSH's next auto-update
+replaces `app.asar` entirely, which removes it.
 
 **Testing scope.** This plugin has only been exercised on the author's own Windows machine
 running DeepSeek Harness 0.2.0-rc.2. Other operating systems, DSH versions, or
@@ -111,27 +138,25 @@ MIT licensed. The rest of this document is in Chinese and goes into more depth.
 
 ### 安装
 
-```
-dsh plugin --profile desktop add dsh-window-control
-```
+按下面四步走：
 
-然后**完全退出 DSH 并重新打开一次**（托盘图标右键 → 退出，只关窗口只是隐藏到托盘）。
+1. **安装插件**（在终端执行；按你的 DSH 配置把 `desktop` 换成实际 profile 名）：
 
-为什么需要这一次重启：DSH 主进程的代码在启动时就被载入内存，插件只能在 DSH 跑起来
-之后才能去装窗口通道，所以这一轮改动要等下次启动才被读到。重开之后，设置页里
-「窗口通道尚未生效」的提示会消失，所有按钮变为可用 **且不再需要重启**。
+   ```
+   dsh plugin --profile desktop add dsh-window-control
+   ```
 
-> **首次安装实际要重启两次**：第一次启动负责「装上」，第二次启动才「生效」。
-> 中间那次打开设置页会看到「窗口通道尚未生效」的提示，这是预期内的，不是装失败了。
+2. **完全退出 DSH** —— 托盘图标右键 →「退出」。只关窗口只是把窗口隐藏到托盘，不算退出，桥不会被处理。
 
-> 万一自动安装真的被挡住（装在 `Program Files` 没写权限、macOS 签名、杀软拦截、
-> DSH 刚升级导致拒绝注入），插件不会让你一直空转重启：连续 3 次启动读不到通道时，
-> 设置页会列出具体原因、宿主诊断文件的位置和自查命令，还有一个「复制排障信息」按钮。
+3. **重新打开 DSH（第 1 次启动）**：这次启动负责把窗口通道「装上」。此时打开「设置 → 窗口与退出」会看到「窗口通道尚未生效」的提示，**这是预期内的，不是装失败**。
 
-> 宿主半边在每次 DSH 启动后都会检查一次：已经装好就什么都不做（幂等），所以
-> DSH 升级覆盖了安装目录之后，**下一次启动会自动重新装好**，你不需要做任何事。
-> 打桥前它还会把 `app.asar.orig` 与当前归档核对一遍，对不上就重做备份 ——
-> 这样备份永远对应你正在用的这一版，不会变成「上一个版本」的残留。
+4. **再次完全退出并重新打开 DSH（第 2 次启动）**：这次才真正「生效」。打开「设置 → 窗口与退出」，提示消失、所有按钮可用，安装完成。此后**不再需要重启**。
+
+> **为什么必须重启两次**：DSH 主进程的代码在启动时就被载入内存，插件只能在 DSH 跑起来之后才能去装窗口通道，所以这一轮改动要等下次启动才被读到；而装插件本身也要重启一次插件才第一次运行。于是时间线是「装插件（未运行）→ 第 1 次启动（装上桥）→ 第 2 次启动（生效）」。
+
+如果自动安装真的被挡住（装在 `Program Files` 没写权限、macOS 签名、杀软拦截、DSH 刚升级导致拒绝注入），插件不会让你一直空转重启：连续 3 次启动读不到通道时，设置页会列出具体原因、宿主诊断文件的位置和自查命令，还有一个「复制排障信息」按钮。手动排障命令见下方「手动操作（排障用）」。
+
+> 宿主半边在每次 DSH 启动后都会检查一次：已经装好就什么都不做（幂等），所以 DSH 升级覆盖安装目录之后，**下一次启动会自动重新装好**，你不需要做任何事。打桥前它还会把 `app.asar.orig` 与当前归档核对一遍，对不上就重做备份 —— 这样备份永远对应你正在用的这一版。
 
 ### 插件总开关（「关闭 = 等同未安装」）
 
@@ -287,47 +312,46 @@ node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用�
 `cordis.patch.yml` 里给本插件加 `config: { autoInstall: false }` 即可，此时插件只剩
 渲染端那部分能力。
 
-### 卸载 / 还原
+### 卸载
 
-```bat
-:: 1) 完全退出 DSH，然后把安装目录还原成原版
-node lib/bridge-cli.mjs restore
+本插件除了代码，还会往 DSH 安装目录的 `resources/app.asar` 里**打一段桥**（用来真正控制窗口）。
+所以干净卸载永远是**两步：先撤桥、再删插件** —— 顺序不能反。
 
-:: 2) 移除插件
-dsh plugin --profile desktop remove dsh-window-control
-```
+> 为什么不能反过来、也不能「删插件自动还原」：插件一旦被移出 profile，它的宿主半边就不再被加载，
+> 没有任何代码会再执行，也就不存在「下次启动发现桥还在、插件已不在、顺手还原」的机会。这是 DSH
+> 插件机制的硬限制，不是偷懒。
 
-`restore` 会从 `app.asar.orig` 写回原始归档。三道护栏保证它不会帮倒忙：
+**路径 A — 命令行（最干净，推荐）**
 
-- **归档没打过桥时直接拒绝**（提示「当前归档未打过桥，无需还原」）。否则在 DSH 升级过之后，
-  备份还是上一个版本的代码，写回去就等于把安装降级成「新 exe + 旧资源」。
-- **每次打桥前都会把备份与当前归档对一遍**，对不上（说明 DSH 升级换过归档）就自动用当前归档
-  重做备份，所以手上的备份永远对应正在用的这一版。
-- 确实需要强行覆盖时才用 `node lib/bridge-cli.mjs restore --force`。
+1. 完全退出 DSH（托盘 → 退出）。
+2. 撤桥并清掉备份：
 
-另外，**写入失败会自动回滚**：`install` 落盘后一定复验一次，对不上就立刻用备份把归档还原回去。
-宁可这一次安装失败，也不会把一个半写状态的 `app.asar` 留在安装目录里 —— 那种状态下 DSH 连启动都做不到。
-结果会记进状态文件的 `rolledBack` 字段。
+   ```
+   node lib/bridge-cli.mjs uninstall
+   ```
 
-#### 卸载前请先撤桥（这一步没法自动化，原因见下）
+3. 移除插件：
 
-```bat
-:: 1) 完全退出 DSH 后执行：撤桥 + 清掉备份
-node lib/bridge-cli.mjs uninstall
+   ```
+   dsh plugin --profile desktop remove dsh-window-control
+   ```
 
-:: 2) 再移除插件
-dsh plugin --profile desktop remove dsh-window-control
-```
+`uninstall` 会把 `app.asar` 还原成原版**并删除 `app.asar.orig` 备份**（幂等，多跑无害）。
 
-`uninstall` 会把归档还原成原版**并清掉 `app.asar.orig`**；只想还原、想留着备份时用 `restore`。
+**路径 B — 不用碰命令行**
 
-**为什么做不到「卸载即自动还原」**：插件一旦被移出 profile，它的宿主半边就不再被加载 ——
-没有任何代码会再执行，也就不存在「下次启动发现桥还在、插件已不在」的机会。这是 DSH 插件
-机制的硬限制，不是偷懒。所以请在移除插件**之前**先撤桥，两条路任选其一：
+1. 在 profile 的 `cordis.patch.yml` 里给本插件加 `config: { autoInstall: false }`。
+2. 完全退出 DSH 并重新打开一次 —— 宿主半边会主动撤桥并清掉备份。
+3. 确认 DSH 已回到原版（设置页不再有本插件的入口）后，再把插件从 profile 移除。
 
-- **手动**：跑一次上面的 `uninstall`（或 `restore`）。
-- **自动**：在 profile 的 `cordis.patch.yml` 里给本插件加 `autoInstall: false` 并重启一次 ——
-  宿主半边会主动撤桥并清掉备份，确认 DSH 回到原版后再把插件移除即可。
+**只想还原、暂时不删**：用 `node lib/bridge-cli.mjs restore`。它与 `uninstall` 的区别是
+**保留 `app.asar.orig` 备份**（方便日后重装）。`restore` 有护栏：归档没打过桥时会直接拒绝，
+避免把旧备份写回去导致「新 exe + 旧资源」的降级。
+
+> 懒得管那层桥也可以：只删插件、不撤桥也「能用」—— 桥留在 `app.asar` 里只是没人调用的死代码；
+> 而且 DSH 下次自动更新会整体替换 `app.asar`，桥自然就没了。只是那之前你的 `app.asar` 不是原版。
+
+写入失败会自动回滚：`install` 落盘后一定复验一次，对不上就立刻用备份把归档还原回去，绝不留半写状态的 `app.asar`（那种状态下 DSH 连启动都做不到）。
 
 ### 跨平台情况（换一台电脑还能不能用）
 
@@ -448,8 +472,8 @@ locale 服务缺席而没文案。
 ### 开发自测
 
 ```bat
-node _selftest.mjs          :: 渲染端沙箱自测，当前 53/53 通过
-node _bridge-selftest.mjs   :: 桥引擎自测，当前 39/39 通过
+node _selftest.mjs          :: 渲染端沙箱自测，当前 76/76 通过
+node _bridge-selftest.mjs   :: 桥引擎自测，当前 48/48 通过
 ```
 
 桥引擎自测在临时目录里造**微型假 asar**（不碰真的 121 MB 归档，也不依赖它），
@@ -457,4 +481,4 @@ node _bridge-selftest.mjs   :: 桥引擎自测，当前 39/39 通过
 并发锁 / 符号预检 / 锚点漂移 / 权限不足。
 
 真实归档上的端到端验证另外做过：构建 / 自检 / 安装 / 回滚全部通过，
-全量 11470 个条目 sha256 复算零不一致，且产物与早期 Python 版实现**逐字节完全相同**。
+全量 12965 个条目 sha256 复算零不一致，且产物与早期 Python 版实现**逐字节完全相同**。
