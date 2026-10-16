@@ -65,6 +65,14 @@ node lib/bridge-cli.mjs uninstall   # remove the channel and clean up
 `cordis.patch.yml` and restart DSH once (that reverts it). Nothing can do this automatically
 once the plugin is gone, because a removed plugin is no longer loaded.
 
+**Testing scope.** This plugin has only been exercised on the author's own Windows machine
+with the current DeepSeek Harness build. Other operating systems, DSH versions, or
+environments are unverified - it may or may not behave the same there.
+
+**Bug reports.** If something misbehaves on your setup, please open an issue at
+https://github.com/YunLiZeMeng/dsh-window-control/issues - include your OS, DSH version,
+and steps to reproduce.
+
 **Self-tests** (both run against mocks; neither touches your DSH install)
 
 ```
@@ -350,6 +358,16 @@ dsh plugin --profile desktop remove dsh-window-control
 改安装目录这件事还有一类绕不开的干扰：**杀毒软件 / 企业管控可能拦截对安装目录的写入**。
 这不属于插件能处理的范围，遇到时表现为写入失败（插件会自动回滚并保持原样），
 把安装目录加入白名单即可。
+
+### 测试范围与 Bug 反馈
+
+本插件**只在作者自己的 Windows 设备上、配合当前版本的 DeepSeek Harness 实测过**；其它操作系统、DSH 版本或环境均未验证，能否正常工作说不准。
+
+如果在你机器上出现异常，欢迎去 [Issues](https://github.com/YunLiZeMeng/dsh-window-control/issues) 提一个 issue，最好带上：
+
+- 操作系统与 DSH 版本
+- 复现步骤
+- 插件状态文件 `~/.dsh/profiles/desktop/.dsh-window-control.json` 的内容（出问题时界面会提示它的位置）
 
 ### 为什么「启动自动铺满」的默认值是「最大化」而不是「真全屏」
 
