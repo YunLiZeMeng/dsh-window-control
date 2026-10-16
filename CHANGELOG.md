@@ -17,6 +17,8 @@
   当前 DSH 版本上实测过，其它平台 / 版本未验证；并给出反馈入口（GitHub Issues，
   `package.json` 的 `bugs` 字段早已指向它）。目的是在上架前把兼容性边界讲清楚，
   免得用户误以为全平台已验证。
+- **测试范围一节补上具体版本号**：由「当前 DSH 版本」改为明确写成 `DeepSeek Harness 0.2.0-rc.2`
+  （版本取自本机安装 exe 的 `FileVersion`；安装目录根的 `version` 文件里 `44.0.0` 是 Chromium 内核号，并非 DSH 版本）。
   以及 `PUBLISHING.md` 里上架用的 YAML（中英文）和仓库 About 建议文案；
   README 中英文开头的第一句也一并换成同一句话。仅文案改动，无代码变更。
 

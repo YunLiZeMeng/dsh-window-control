@@ -66,7 +66,7 @@ node lib/bridge-cli.mjs uninstall   # remove the channel and clean up
 once the plugin is gone, because a removed plugin is no longer loaded.
 
 **Testing scope.** This plugin has only been exercised on the author's own Windows machine
-with the current DeepSeek Harness build. Other operating systems, DSH versions, or
+running DeepSeek Harness 0.2.0-rc.2. Other operating systems, DSH versions, or
 environments are unverified - it may or may not behave the same there.
 
 **Bug reports.** If something misbehaves on your setup, please open an issue at
@@ -361,7 +361,7 @@ dsh plugin --profile desktop remove dsh-window-control
 
 ### 测试范围与 Bug 反馈
 
-本插件**只在作者自己的 Windows 设备上、配合当前版本的 DeepSeek Harness 实测过**；其它操作系统、DSH 版本或环境均未验证，能否正常工作说不准。
+本插件**只在作者自己的 Windows 设备上、配合 DeepSeek Harness 0.2.0-rc.2 实测过**；其它操作系统、DSH 版本或环境均未验证，能否正常工作说不准。
 
 如果在你机器上出现异常，欢迎去 [Issues](https://github.com/YunLiZeMeng/dsh-window-control/issues) 提一个 issue，最好带上：
 
