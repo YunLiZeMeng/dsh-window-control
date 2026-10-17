@@ -19,6 +19,8 @@ const fsCalls = []
 const mxCalls = []
 const mnCalls = []
 const topCalls = []
+/** 每次调桥 `state()` 时的快照，用来验证「收敛后是否还在轮询」。 */
+const stateCalls = []
 /** 模拟的窗口状态，由 mock 桥读写，用于验证启动铺满逻辑。 */
 const hw = { fullscreen: false, maximized: false, minimized: false, top: false }
 
@@ -181,6 +183,7 @@ sandbox.window = {
       return Promise.resolve(!!v)
     },
     state() {
+      stateCalls.push({ ...hw })
       return Promise.resolve({ ...hw })
     },
     quit(options) {
@@ -292,7 +295,7 @@ try {
 check('apply 无异常', applyError === null, applyError && applyError.message)
 check('注册了 settings.section', injected.includes('settings.section'))
 check('注册了 window-control 区块', injected.includes('window-control'))
-check('注册了 3 个 effect', effects.length === 3, effects.map((e) => e.label).join(' | '))
+check('注册了 4 个 effect', effects.length === 4, effects.map((e) => e.label).join(' | '))
 
 // ---- Esc 行为 ----
 const keydowns = winListeners.get('keydown') || []
@@ -500,6 +503,31 @@ check(
   '总开关关闭后不自动铺满',
   fsCalls.length === 0 && mxCalls.length === 0,
   `fs=${JSON.stringify(fsCalls)} mx=${JSON.stringify(mxCalls)}`,
+)
+
+// ---- 置顶偏好：启动时要补应用（早先只写进 localStorage、没有任何地方读）----
+hw.top = false
+topCalls.length = 0
+await bootWith({ alwaysOnTop: true })
+check('启动时按配置补应用窗口置顶', topCalls.includes(true), `top=${JSON.stringify(topCalls)}`)
+
+hw.top = false
+topCalls.length = 0
+await bootWith({ alwaysOnTop: false, startMode: 'off' })
+check('没勾置顶时启动不碰置顶', topCalls.length === 0, `top=${JSON.stringify(topCalls)}`)
+
+// ---- 启动铺满收敛后必须停手 ----
+// 早先那条重试链无条件重跑 10 轮（每轮一次 window-state IPC），贴满之后还在白跑 9 轮。
+hw.fullscreen = false
+hw.maximized = false
+stateCalls.length = 0
+await bootWith({ startMode: 'maximized' }, 2)
+const stateCallsAfterApply = stateCalls.length
+await new Promise((r) => setTimeout(r, 500))
+check(
+  '铺满成功后就停手（不再重复查询窗口状态）',
+  stateCallsAfterApply > 0 && stateCalls.length === stateCallsAfterApply,
+  `应用后=${stateCallsAfterApply}，500ms 后=${stateCalls.length}`,
 )
 
 // ---- 回归：启动选「不自动」后，再切「最大化」必须立刻生效 ----
@@ -1122,7 +1150,7 @@ check(
   fallbackTexts.slice(0, 3).join(' / '),
 )
 
-// ③ 插槽服务缺失/抛错时，apply 不得抛异常，且三个行为仍要注册
+// ③ 插槽服务缺失/抛错时，apply 不得抛异常，且四个行为仍要注册（轮询 / 铺满 / 置顶 / Esc）
 const behaviorLabels = []
 let slotsError = null
 try {
@@ -1146,8 +1174,8 @@ check(
   slotsError && slotsError.message,
 )
 check(
-  '插槽未就绪时仍注册三个行为',
-  behaviorLabels.length === 3,
+  '插槽未就绪时仍注册四个行为',
+  behaviorLabels.length === 4,
   behaviorLabels.join(' | '),
 )
 

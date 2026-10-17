@@ -12,6 +12,17 @@
 
 仓库地址：`https://github.com/YunLiZeMeng/dsh-window-control`
 
+**最省事的做法：双击桌面上的 `push-dsh-window-control.cmd`。** 它内部就是下面那条命令，另加了
+「HTTP/1.1 + 最多重试 6 次」的抗网络抖动逻辑，成功时打印 `main -> main`。
+> ⚠️ 它**只负责 push**，不管提交。有未提交的改动时，先跑这两条再双击（git 路径同上）：
+>
+> ```powershell
+> & "C:\Users\19881\.workbuddy\binaries\PortableGit\versions\1.3.0\cmd\git.exe" -C "C:\Users\19881\WorkBuddy\main\dsh-window-control" add -A
+> & "C:\Users\19881\.workbuddy\binaries\PortableGit\versions\1.3.0\cmd\git.exe" -C "C:\Users\19881\WorkBuddy\main\dsh-window-control" commit -m "<提交说明>"
+> ```
+
+下面是不用脚本时的手动方式。
+
 本机没有安装独立的 Git，只有 WorkBuddy 自带的一份。因此在 PowerShell 里**必须写完整路径**
 （下面这条命令已经在真实环境验证过，git 2.55 + 自带 GitHub 登录组件 2.9.0）：
 
@@ -116,8 +127,8 @@ Tired of going fullscreen by hand every time you open Harness? This plugin auto-
 |---|---|
 | `dsh.bundle` manifest | ✅ `package.json` 里有 `dsh.bundle.patch = ./cordis.patch.yml` |
 | `cordis.patch.yml` 形态 | ✅ `- insert: - id: dsh-window-control / name: dsh-window-control` |
-| 真实可用的代码 | ✅ 5500+ 行，含两套自测（渲染端 76 项、桥引擎 48 项） |
-| 仓库满 1 天 | ⏳ 见上，10-16 17:45 之后 |
+| 真实可用的代码 | ✅ 代码 + 自测 5000+ 行，含两套自测（渲染端 79 项、桥引擎 60 项） |
+| 仓库满 1 天 | ✅ 仓库创建于 2026-10-15，已满 |
 | `dsh-plugin` 标签 | ⏳ 第 2 步 |
 | 描述属实 | ✅ 描述里的每项能力都对应真实代码；未用夸张词 |
 | 分类贴切 | ✅ `ui`（UI 增强），窗口控制属于界面行为 |
@@ -132,7 +143,7 @@ Tired of going fullscreen by hand every time you open Harness? This plugin auto-
 如果要做：需要 npm 账号，然后在项目目录执行 `npm publish`。
 注意 `package.json` 的 `repository` 字段必须指回本仓库 —— **我们已经填好了**，符合官方要求。
 
-另一种可选做法：把打包好的 `dsh-window-control-1.4.1.tgz` 挂到 GitHub Release，
+另一种可选做法：把打包好的 `dsh-window-control-1.4.2.tgz` 挂到 GitHub Release，
 并在条目里加 `tarball:` 字段。仅在"仓库无法从源码安装"时才是必需的，本插件不属于这种情况。
 
 ---
@@ -144,7 +155,7 @@ Tired of going fullscreen by hand every time you open Harness? This plugin auto-
 1. `package.json` 里的 `version` +1（例如 1.4.1 → 1.4.2）
 2. `CHANGELOG.md` 顶部加一节
 3. 跑一遍自测：`node _selftest.mjs && node _bridge-selftest.mjs`
-4. 用第 1 步那条命令推送
+4. 先把改动提交（`add -A` + `commit`），再双击桌面上的 `push-dsh-window-control.cmd`
 
 收录列表**不用重新提 PR** —— 它只记仓库地址，用户装到的永远是最新代码。
 只有仓库地址变了、或想改描述/分类时才需要回去改那个 yml 文件。

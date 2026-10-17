@@ -31,7 +31,8 @@ function comment(anchor, length) {
 /**
  * 造一个微型 asar。
  * @param dir - 输出目录。
- * @param options - `{ main, preload }` 两个条目正文。
+ * @param options - `{ main, preload, extra?, noIntegrity? }`：两个目标条目正文；
+ *   `extra` 是额外的 `[文件名, 内容]`（放在 /lib 下），`noIntegrity` 列出不写 integrity 的文件名。
  * @returns 归档路径。
  */
 function makeAsar(dir, options) {
@@ -39,22 +40,27 @@ function makeAsar(dir, options) {
     ['main.js', '/lib/main.js', options.main],
     ['preload-app.cjs', '/lib/preload-app.cjs', options.preload],
   ]
+  /* 额外条目：都放在 /lib 下，用来构造「同内容不同条目」这类边界情况。 */
+  for (const [name, text] of options.extra || []) items.push([name, '/lib/' + name, text])
+  const noIntegrity = options.noIntegrity || []
+
   let offset = 0
   const metas = {}
   const data = []
   for (const [file, key, text] of items) {
     const buf = Buffer.from(text, 'utf8')
     const digest = sha256(buf)
-    metas[key] = {
-      size: buf.length,
-      offset: String(offset),
-      integrity: { algorithm: 'SHA256', blocks: [digest], hash: digest },
+    const meta = { size: buf.length, offset: String(offset) }
+    /* 真实归档里 integrity 可能存在也可能不存在（看打包方式），两种都得能装。 */
+    if (!noIntegrity.includes(file)) {
+      meta.integrity = { algorithm: 'SHA256', blocks: [digest], hash: digest }
     }
+    metas[key] = meta
     offset += buf.length
     data.push(buf)
   }
   const header = {
-    files: { lib: { files: { 'main.js': metas['/lib/main.js'], 'preload-app.cjs': metas['/lib/preload-app.cjs'] } } },
+    files: { lib: { files: Object.fromEntries(items.map(([file, key]) => [file, metas[key]])) } },
   }
   const json = Buffer.from(JSON.stringify(header), 'utf8')
   const head = Buffer.alloc(16)
@@ -165,6 +171,93 @@ try {
 
   const again = engine.uninstall(archive)
   check('重复 uninstall 幂等且不写盘', again.ok === true && again.changed === false, again.message)
+
+  // ---- 还原失败必须如实报告：归档读不出来 ≠ 还原成功 ----
+  const brokenDir = path.join(dir, 'broken')
+  fs.mkdirSync(brokenDir)
+  const brokenArchive = makeAsar(brokenDir, { main: goodMain(), preload: goodPreload() })
+  engine.install(brokenArchive)
+  /*
+   * 把备份弄成「长度字段就是坏的」：还原时不管走「整文件覆盖」还是「运行中原地覆盖」
+   * 那条路，归档头部都会变成不可解析 —— 而这正是必须被报成失败的那种局面。
+   */
+  fs.writeFileSync(engine.backupPath(brokenArchive), Buffer.alloc(64, 0))
+  const brokenRestore = engine.restore(brokenArchive, { force: true })
+  check(
+    '备份损坏时 restore 报失败（而不是假装还原成功）',
+    brokenRestore.ok === false && /无法解析/.test(brokenRestore.message),
+    brokenRestore.message,
+  )
+
+  // ---- DSH 升级把归档换回原版后，残留的 .orig 也要能清掉 ----
+  const orphanDir = path.join(dir, 'orphan')
+  fs.mkdirSync(orphanDir)
+  const orphanArchive = makeAsar(orphanDir, { main: goodMain(), preload: goodPreload() })
+  const orphanOriginal = fs.readFileSync(orphanArchive)
+  engine.install(orphanArchive)
+  fs.writeFileSync(orphanArchive, orphanOriginal) // 模拟升级：归档回到原版，.orig 还在
+  const orphan = engine.uninstall(orphanArchive)
+  check(
+    '归档已是原版时 uninstall 仍清掉孤儿备份',
+    orphan.ok === true &&
+      orphan.changed === false &&
+      orphan.removedBackup === true &&
+      !fs.existsSync(engine.backupPath(orphanArchive)),
+    orphan.message,
+  )
+
+  // ---- 归档里有「内容完全相同的另一个条目」时，不能改坏别人的完整性哈希 ----
+  const dupDir = path.join(dir, 'dup')
+  fs.mkdirSync(dupDir)
+  const dupArchive = makeAsar(dupDir, {
+    main: goodMain(),
+    preload: goodPreload(),
+    extra: [['dup.js', goodMain()]],
+  })
+  const dupInstalled = engine.install(dupArchive)
+  check('同内容条目共存时 install 仍能成功', dupInstalled.ok === true, dupInstalled.message)
+  const dupBlocks = (dupInstalled.report && dupInstalled.report.blocks) || []
+  const dupMainBlock = dupBlocks.find((block) => block.target === '/lib/main.js')
+  const dupPreloadBlock = dupBlocks.find((block) => block.target === '/lib/preload-app.cjs')
+  check(
+    '旧哈希命中 4 次时按 entry offset 定位',
+    !!dupMainBlock && dupMainBlock.hashMode === 'offset',
+    dupBlocks.map((block) => block.target + '=' + block.hashMode).join(' | '),
+  )
+  check(
+    '正常条目仍走「两处等长替换」',
+    !!dupPreloadBlock && dupPreloadBlock.hashMode === 'plain',
+    dupPreloadBlock && dupPreloadBlock.hashMode,
+  )
+  const dupLoaded = engine.readArchive(dupArchive)
+  const dupMeta = dupLoaded.entries.get('/lib/dup.js')
+  check(
+    '没有改坏同内容条目的完整性哈希',
+    dupMeta.integrity.hash === sha256(Buffer.from(goodMain(), 'utf8')),
+  )
+  check('同内容条目本身逐字节未动', engine.entryBuffer(dupLoaded, dupMeta).toString('utf8') === goodMain())
+  check('同内容场景下安装后自检通过', engine.status(dupArchive).installed === true)
+
+  // ---- 条目没有 integrity 块时不能永久拒装 ----
+  const plainDir = path.join(dir, 'nointegrity')
+  fs.mkdirSync(plainDir)
+  const plainArchive = makeAsar(plainDir, {
+    main: goodMain(),
+    preload: goodPreload(),
+    noIntegrity: ['main.js'],
+  })
+  const plainInstalled = engine.install(plainArchive)
+  check('条目缺 integrity 时仍能安装', plainInstalled.ok === true, plainInstalled.message)
+  const plainBlocks = (plainInstalled.report && plainInstalled.report.blocks) || []
+  const plainMainBlock = plainBlocks.find((block) => block.target === '/lib/main.js')
+  check(
+    '缺 integrity 的条目标记为 none（不写哈希）',
+    !!plainMainBlock && plainMainBlock.hashMode === 'none',
+    plainBlocks.map((block) => block.target + '=' + block.hashMode).join(' | '),
+  )
+  const plainStatus = engine.status(plainArchive)
+  check('缺 integrity 时安装后状态正常', plainStatus.ok === true && plainStatus.installed === true)
+  check('缺 integrity 时备份仍已生成', fs.existsSync(engine.backupPath(plainArchive)))
 
   // ---- 符号预检：缺符号时必须拒绝，且不产生任何副作用 ----
   const driftDir = path.join(dir, 'drift')

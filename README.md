@@ -103,8 +103,8 @@ and steps to reproduce.
 **Self-tests** (both run against mocks; neither touches your DSH install)
 
 ```
-node _selftest.mjs          # browser half, 76 checks
-node _bridge-selftest.mjs   # bridge engine, 48 checks, uses a tiny fake archive
+node _selftest.mjs          # browser half, 79 checks
+node _bridge-selftest.mjs   # bridge engine, 60 checks, uses a tiny fake archive
 ```
 
 MIT licensed. The rest of this document is in Chinese and goes into more depth.
@@ -124,7 +124,7 @@ MIT licensed. The rest of this document is in Chinese and goes into more depth.
 | 全屏 / 退出全屏 | **真窗口全屏**（盖住任务栏），不是网页级全屏 |
 | 最大化 / 还原 | 窗口最大化与还原 |
 | **最小化** | 把窗口收进任务栏（v3 桥） |
-| **窗口置顶** | 让 DSH 始终显示在其他窗口之上（v3 桥） |
+| **窗口置顶** | 让 DSH 始终显示在其他窗口之上（v3 桥）；**勾选后会被记住，下次启动自动补上** |
 | 退出 DeepSeek Harness | **无条件**先弹**原生确认对话框**，确认后才退出 |
 | 启动时自动铺满窗口 | 三选一：**最大化（默认）** / 真全屏 / 不自动；改了立即生效，不用重启 |
 | **退出快捷键** | 四选一：**Esc（默认）** / 双击 Esc / Ctrl+Q / 关闭。某些界面里 Esc 另有用途时，改成后两者可避免误触 |
@@ -228,7 +228,7 @@ DSH 的插件体系有两半，两边都碰不到主进程：
 
 `lib/asar-bridge.js` 对 `resources/app.asar` 里两个文件做**等长就地替换**：把两段
 纯文档注释换成注入代码（空格补齐到原长度），并**原位更新**头部里这两个文件的
-`integrity.hash`。归档总大小、头部长度都不变，其余 12967 个条目逐字节未动。
+`integrity.hash`。归档总大小、头部长度都不变，**其余条目逐字节未动**（改了几个条目就只写几个条目的字节；实际条目数随 DSH 版本变化，可用 `node lib/bridge-cli.mjs status` 看当前值）。
 
 ```
 lib/main.js         加 839 字节 → 注册 4 条 IPC
@@ -282,6 +282,12 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 - 注入代码是纯 ASCII，长度受「可替换块大小」硬约束，超长会直接拒绝而不是静默截断。
 - **注入前符号预检**：先确认目标文件里存在注入代码要依赖的符号（`assertDesktopSender` 等）。
   DSH 升级改了这些代码时会直接拒绝，而不是把代码塞进不匹配的位置。
+- **头部哈希按条目精确定位**：正常情况旧哈希在头部只出现两次（`integrity.hash` 与
+  `integrity.blocks[0]`），直接等长替换；如果归档里恰好有**内容完全相同的另一个条目**
+  （sha256 一样、旧哈希会出现 4 次），改成用本条目唯一的 `offset` 做锚点只改自己的两处，
+  不会把别的条目的完整性改坏。
+- **没有完整性块的条目也能装**：归档没写 `integrity` 时跳过写哈希（那种情况下 DSH 也不校验），
+  不会因为归档格式上的一点差异就永久拒装。
 - **并发锁**：改动期间持有锁文件，两个 DSH 实例同时启动时第二个直接跳过。
 - **写入权限预检**：动手前先确认写得了。装在 `Program Files` 这类需要提权的位置时，
   会给出「以管理员身份运行一次」这类可操作的提示，而不是抛一个 `EACCES`。
@@ -293,15 +299,19 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 宿主半边会自动处理，正常情况用不到。需要时：
 
 ```bat
-node lib/bridge-cli.mjs status      :: 看当前状态（未安装 / 已安装 v2 / 锁 / DSH 是否在运行）
-node lib/bridge-cli.mjs check       :: 只构建 + 全量自检，不落盘
+node lib/bridge-cli.mjs status      :: 看当前状态（未安装 / 已安装 v3 / 锁 / DSH 是否在运行）
+node lib/bridge-cli.mjs check       :: 只构建 + 全量自检，不落盘（已打桥时自动改为校验 .orig 备份）
 node lib/bridge-cli.mjs install     :: 手动安装（幂等）
 node lib/bridge-cli.mjs install --force   :: 已打过桥也先还原再重打一遍
 node lib/bridge-cli.mjs restore     :: 从备份还原 app.asar
 node lib/bridge-cli.mjs restore --force   :: 归档没打过桥也照写
 node lib/bridge-cli.mjs uninstall  :: 撤桥 + 清理备份（卸载插件时用它）
-node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用）
+node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用；已打桥时同 check 一样看备份）
 ```
+
+> `check` / `bench` 在**已经打过桥**的机器上照样能用：桥装上之后锚点注释已被注入代码替代，
+> 对着线上归档原地构建必然失败 —— 而这恰恰是最常见的排障现场。所以它们会自动改看
+> `app.asar.orig`（那就是原版），它能否构建通过，正好回答「DSH 升级后本版插件还能不能注入」。
 
 排障还可以看这两个地方：
 
@@ -459,8 +469,8 @@ lib/index.js         宿主半边：每次启动自动检测 / 安装 / 记状�
 lib/asar-bridge.js   桥引擎：asar 读写、注入、自检、回滚（纯 Node，零依赖）
 lib/bridge-cli.mjs   同一个引擎的命令行入口（排障用）
 lib/client.js        渲染端：设置区块 UI + Esc 处理 + 启动铺满
-locale/zh.json       界面文案（中文）
-locale/en.json       界面文案（英文）
+locale/zh.json       插件在市场里的标题与描述（中文；界面文案在 lib/client.js）
+locale/en.json       插件在市场里的标题与描述（英文；界面文案在 lib/client.js）
 icon.svg             插件图标
 cordis.patch.yml     bundle 层挂载声明
 ```
@@ -472,13 +482,14 @@ locale 服务缺席而没文案。
 ### 开发自测
 
 ```bat
-node _selftest.mjs          :: 渲染端沙箱自测，当前 76/76 通过
-node _bridge-selftest.mjs   :: 桥引擎自测，当前 48/48 通过
+node _selftest.mjs          :: 渲染端沙箱自测，当前 79/79 通过
+node _bridge-selftest.mjs   :: 桥引擎自测，当前 60/60 通过
 ```
 
-桥引擎自测在临时目录里造**微型假 asar**（不碰真的 121 MB 归档，也不依赖它），
+桥引擎自测在临时目录里造**微型假 asar**（不碰真的归档文件，也不依赖它），
 复刻了真归档的全部结构约束，覆盖：安装 / 幂等 / 自检 / 回滚 / 卸载还原 /
 并发锁 / 符号预检 / 锚点漂移 / 权限不足。
 
 真实归档上的端到端验证另外做过：构建 / 自检 / 安装 / 回滚全部通过，
-全量 12967 个条目 sha256 复算零不一致，且产物与早期 Python 版实现**逐字节完全相同**。
+全量逐条目 sha256 复算零不一致（条目数随 DSH 版本变化；用 `node lib/bridge-cli.mjs check` 可对你这一版复测，
+它的「其余 N 个条目不参与改动」一行就是当前条目数），且产物与早期 Python 版实现**逐字节完全相同**。
