@@ -26,21 +26,30 @@ Entry point: **Settings → Window & Quit**.
 
 **Install**
 
-1. Add the plugin from the **in-app marketplace** (search `dsh-window-control`). The desktop app
-   does not ship a `dsh` command by default, so the CLI form below only applies to an npm-installed
-   DSH CLI (there, replace the profile name to match your setup):
+**Step 1 · Add the plugin.** Open the **in-app marketplace**, search `dsh-window-control`, install.
 
-   ```
-   dsh plugin --profile desktop add dsh-window-control
-   ```
+> `dsh plugin add …` only works where an npm-installed DSH CLI exists; the desktop app ships
+> **no `dsh` command by default** and reports "'dsh' is not recognized".
 
-2. Quit DSH completely - right-click the tray icon and choose Quit. Closing the window only
-   hides it to the tray, which is not a quit and the bridge will not be touched.
-3. Reopen DSH (first launch) - this launch installs the window channel. The Settings -> Window &
-   Quit page will say the channel is not active yet; **that is expected, not a failure**.
-4. Quit DSH completely again and reopen it (second launch) - this launch reads the channel.
-   Open Settings -> Window & Quit: the warning is gone and every button works. No more restarts
-   are needed after this.
+**Step 2 · Quit DSH completely.** Tray icon → Quit. Closing the window only hides it to the tray;
+that is not a quit and the channel will not be installed.
+
+**Step 3 · Reopen DSH (first launch).** This launch writes the window channel into `app.asar`.
+Open Settings → Window & Quit and you will see the channel is not active yet - **expected, not a
+failure**.
+
+**Step 4 · Quit completely and reopen again (second launch).** Now it takes effect: the warning is
+gone and every button works. No more restarts after this.
+
+**Check it worked (optional)** - paste this line into cmd and press Enter:
+
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" status
+```
+
+`桥状态      : 已安装 v3（含最小化 / 窗口置顶）` means it is installed. The command needs neither
+PATH nor a particular cwd; two things may need editing - `dsh-primary-runtime` (check the real name
+with `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"`) and the profile name `desktop`.
 
 > ⚠️ **Why two restarts?** The DSH main process loads its code at launch, and the plugin can only
 > patch the window channel while DSH is already running — so the first launch installs the channel
@@ -63,18 +72,26 @@ directory from the running DSH executable, so custom install paths are supported
 
 **Manual commands** (troubleshooting)
 
-Run these from the plugin directory - a marketplace install lives at
-`~/.dsh/profiles/<profile>/node_modules/dsh-window-control`. If `node -v` reports "not found", use
-the runtime node that ships with DSH: on Windows
-`%USERPROFILE%\.dsh\dsh-runtimes\*\dependencies\node\bin\node.exe` (the version folder name changes
-between DSH releases - `dir` it to find the current one).
+The host half does all of this by itself. If you do need the CLI, paste this line into cmd and press
+Enter - it needs neither PATH nor a particular cwd:
 
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" status
 ```
-node lib/bridge-cli.mjs status      # is the channel installed?
-node lib/bridge-cli.mjs install     # install it (add --force to reinstall)
-node lib/bridge-cli.mjs restore     # put the original app.asar back
-node lib/bridge-cli.mjs uninstall   # remove the channel and clean up
-```
+
+Swap the trailing `status` for any of:
+
+| Subcommand | What it does |
+|---|---|
+| `status` | is the channel installed, which version, is the lock free, is DSH running |
+| `check` | build + full self-check, no write (falls back to `app.asar.orig` when the live archive is already bridged) |
+| `install` | install it (idempotent); `install --force` reverts first and redoes it |
+| `restore` | put the original `app.asar` back, keeping the backup (`--force` writes even without a bridge) |
+| `uninstall` | revert and drop the backup |
+| `bench` | time the read/build steps |
+
+> Only two things may need editing: `dsh-primary-runtime` (see
+> `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"`) and the profile name `desktop`.
 
 **Uninstall.** Clean uninstall is always two steps: revert the bridge **first**, then remove the
 plugin - order matters.
@@ -83,34 +100,59 @@ plugin - order matters.
 > longer loaded, so no code runs again - there is no "next launch discovers the bridge is still
 > there and reverts it" opportunity. That is a hard limit of the DSH plugin model.
 
-**Path A - command line (cleanest, recommended)**
+**Path A · command line (recommended)**
 
-1. Quit DSH completely.
-2. Revert the bridge and clear the backup, from the plugin directory:
-   `node lib/bridge-cli.mjs uninstall`.
-   Under `Program Files` this needs an elevated terminal, same as the first install.
-3. Remove the plugin - from the marketplace, or with `dsh plugin --profile desktop remove
-   dsh-window-control` if you have the npm-installed CLI (the desktop app does not ship one).
+Step 1 · Revert the bridge and clear the backup - paste this line into cmd and press Enter:
 
-**Path B - no command line**
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" uninstall
+```
 
-1. Add this to the profile's `cordis.patch.yml` (`id` targets the loaded entry, `config` overrides it):
+Expected:
 
-   ```yaml
-   - id: dsh-window-control
-     config:
-       autoInstall: false
-   ```
-2. Quit DSH completely and reopen once - the host half reverts the bridge and clears the backup.
-3. Verify DSH is back to stock (`node lib/bridge-cli.mjs status` must say `桥状态 : 未安装` - the CLI
-   output is Chinese), then remove the plugin from the profile.
+```
+  [OK] 已还原为原始 app.asar；备份已清理
+桥状态      : 未安装
+```
 
-   > The settings entry does **not** disappear at this point: `autoInstall` only affects the host
-   > half, so the renderer keeps loading and that section just shows the "channel not active" note.
+> Two things may need editing: `dsh-primary-runtime` (see `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"`)
+> and the profile name `desktop`. Under `Program Files` run an **elevated** cmd.
+> With `node` on PATH you can instead `cd` into the plugin directory and run
+> `node lib\bridge-cli.mjs uninstall`.
 
-To just revert without removing, use `node lib/bridge-cli.mjs restore` - it keeps the
-`app.asar.orig` backup (use this if you plan to reinstall later). Leaving the bridge in place and
-only removing the plugin also "works" - it becomes dead code - and DSH's next auto-update
+Step 2 · Remove the plugin from the marketplace.
+
+**Path B · no command line**
+
+Step 1 · Append these four lines to `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`:
+
+```yaml
+- id: dsh-window-control
+  config:
+    autoInstall: false
+```
+
+Step 2 · Quit DSH completely and reopen once - the host half reverts the bridge and clears the backup.
+
+Step 3 · Verify (optional): change the last word of the Path A command to `status`;
+`桥状态      : 未安装` means the archive is stock again.
+
+> The settings entry does **not** disappear at this point: `autoInstall` only affects the host half,
+> so the renderer keeps loading and that section just shows the "channel not active" note.
+
+Step 4 · Remove the plugin from the marketplace.
+
+**Revert only, keep the plugin** - the same line as Path A, ending in `restore` instead:
+
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" restore
+```
+
+Unlike `uninstall` it keeps the `app.asar.orig` backup (useful if you plan to reinstall later). When
+the archive has no bridge it writes nothing at all and reports "nothing to do" - a normal return,
+not an error.
+
+Leaving the bridge in place and only removing the plugin also "works" - it becomes dead code - and
 replaces `app.asar` entirely, which removes it.
 
 **Testing scope.** This plugin has only been exercised on the author's own Windows machine
@@ -159,23 +201,44 @@ MIT licensed. The rest of this document is in Chinese and goes into more depth.
 
 ### 安装
 
-按下面四步走：
+桌面版**没有** `dsh` 命令行工具，也不需要 —— 按下面四步走就行。
 
-1. **安装插件**：在应用内的**插件市场**里搜 `dsh-window-control` 安装（推荐；桌面版默认不带 `dsh` 命令）。
+**第 1 步 · 装插件**
 
-   如果你用的是 npm 版 DSH CLI，也可以在终端执行（把 `desktop` 换成实际 profile 名）：
+应用内打开**插件市场** → 搜 `dsh-window-control` → 安装。
 
-   ```
-   dsh plugin --profile desktop add dsh-window-control
-   ```
+> `dsh plugin add …` 只适用于自己装了 npm 版 DSH CLI 的环境；桌面版照抄会报「'dsh' 不是内部或外部命令」。
 
-2. **完全退出 DSH** —— 托盘图标右键 →「退出」。只关窗口只是把窗口隐藏到托盘，不算退出，桥不会被处理。
+**第 2 步 · 完全退出 DSH**
 
-3. **重新打开 DSH（第 1 次启动）**：这次启动负责把窗口通道「装上」。此时打开「设置 → 窗口与退出」会看到「窗口通道尚未生效」的提示，**这是预期内的，不是装失败**。
+托盘图标右键 →「退出」。
 
-4. **再次完全退出并重新打开 DSH（第 2 次启动）**：这次才真正「生效」。打开「设置 → 窗口与退出」，提示消失、所有按钮可用，安装完成。此后**不再需要重启**。
+> 只关窗口只是隐藏到托盘，进程还在跑 —— 不算退出，窗口通道不会被装。
 
-> **为什么必须重启两次**：DSH 主进程的代码在启动时就被载入内存，插件只能在 DSH 跑起来之后才能去装窗口通道，所以这一轮改动要等下次启动才被读到；而装插件本身也要重启一次插件才第一次运行。于是时间线是「装插件（未运行）→ 第 1 次启动（装上桥）→ 第 2 次启动（生效）」。
+**第 3 步 · 重新打开 DSH（第 1 次启动）**
+
+这次启动会把窗口通道写进 DSH 的 `app.asar`。启动完打开「设置 → 窗口与退出」，
+看到「窗口通道尚未生效」是**预期内的，不是装失败**。
+
+**第 4 步 · 再次完全退出并重新打开（第 2 次启动）**
+
+这次才真正生效：提示消失、按钮全部可用。此后**不再需要重启**。
+
+**验证装好了没（可选）** —— 复制这一行粘进 cmd 回车：
+
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" status
+```
+
+看到 `桥状态      : 已安装 v3（含最小化 / 窗口置顶）` 就成了。这条命令不依赖 PATH、
+也不依赖当前目录；只有两处可能要改：
+
+- `dsh-primary-runtime`：用 `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"` 看实际目录名
+- profile 名 `desktop`：按你自己的配置改
+
+> **为什么必须重启两次**：DSH 主进程的代码在启动时就被载入内存，插件只能在 DSH 跑起来之后
+> 才能去装窗口通道，所以这一轮改动要等下次启动才被读到；而装插件本身也要重启一次插件才第一次
+> 运行。于是时间线是「装插件（未运行）→ 第 1 次启动（装上桥）→ 第 2 次启动（生效）」。
 
 如果自动安装真的被挡住（装在 `Program Files` 没写权限、macOS 签名、杀软拦截、DSH 刚升级导致拒绝注入），插件不会让你一直空转重启：连续 3 次启动读不到通道时，设置页会列出具体原因、宿主诊断文件的位置和自查命令，还有一个「复制排障信息」按钮。手动排障命令见下方「手动操作（排障用）」。
 
@@ -251,7 +314,7 @@ DSH 的插件体系有两半，两边都碰不到主进程：
 
 `lib/asar-bridge.js` 对 `resources/app.asar` 里两个文件做**等长就地替换**：把两段
 纯文档注释换成注入代码（空格补齐到原长度），并**原位更新**头部里这两个文件的
-`integrity.hash`。归档总大小、头部长度都不变，**其余条目逐字节未动**（改了几个条目就只写几个条目的字节；实际条目数随 DSH 版本变化，可用 `node lib/bridge-cli.mjs status` 看当前值）。
+`integrity.hash`。归档总大小、头部长度都不变，**其余条目逐字节未动**（改了几个条目就只写几个条目的字节；实际条目数随 DSH 版本变化，用 `bridge-cli status` 就能看到当前值，命令见「手动操作」）。
 
 ```
 lib/main.js         加 839 字节 → 注册 4 条 IPC
@@ -319,24 +382,26 @@ preload 另暴露 `window.dshWindowControl.v`（当前为 `3`），供渲染端�
 
 ### 手动操作（排障用）
 
-宿主半边会自动处理，正常情况用不到。需要时：
-
-> **两个前提**：① 命令要在**插件目录**里执行 —— 市场装好的位置是
-> `~/.dsh/profiles/<profile>/node_modules/dsh-window-control`；② 终端里得有 `node`。
-> Windows 上 DSH 不会把它加进 PATH，`node -v` 报「不是内部或外部命令」时，改用 DSH 自带的：
-> `%USERPROFILE%\.dsh\dsh-runtimes\*\dependencies\node\bin\node.exe`
-> （`dsh-runtimes` 下的版本目录名随 DSH 版本变化，用 `dir` 找当前那个）。
+宿主半边会自动处理，正常情况用不到。真要用时，复制这一行粘进 cmd —— 它就是桥的 CLI，
+不依赖 PATH、也不依赖当前目录：
 
 ```bat
-node lib/bridge-cli.mjs status      :: 看当前状态（未安装 / 已安装 v3 / 锁 / DSH 是否在运行）
-node lib/bridge-cli.mjs check       :: 只构建 + 全量自检，不落盘（已打桥时自动改为校验 .orig 备份）
-node lib/bridge-cli.mjs install     :: 手动安装（幂等）
-node lib/bridge-cli.mjs install --force   :: 已打过桥也先还原再重打一遍
-node lib/bridge-cli.mjs restore     :: 从备份还原 app.asar
-node lib/bridge-cli.mjs restore --force   :: 归档没打过桥也照写
-node lib/bridge-cli.mjs uninstall  :: 撤桥 + 清理备份（卸载插件时用它）
-node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用；已打桥时同 check 一样看备份）
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" status
 ```
+
+把最后那个 `status` 换成下表任一个（要参数就在后面接，比如 `install --force`）：
+
+| 子命令 | 作用 |
+|---|---|
+| `status` | 看当前状态（未安装 / 已安装 v3 / 锁 / DSH 是否在运行） |
+| `check` | 只构建 + 全量自检，不落盘（已打桥时自动改为校验 `.orig` 备份） |
+| `install` | 手动安装（幂等）；`install --force` 先还原再重打一遍 |
+| `restore` | 从备份还原 `app.asar`；`restore --force` 归档没打过桥也照写 |
+| `uninstall` | 撤桥 + 清理备份（卸载插件时用它） |
+| `bench` | 测一次读取 / 构建耗时 |
+
+> 只有两处可能要改：`dsh-primary-runtime`（用 `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"` 看实际目录名）
+> 和 profile 名 `desktop`。
 
 > `check` / `bench` 在**已经打过桥**的机器上照样能用：桥装上之后锚点注释已被注入代码替代，
 > 对着线上归档原地构建必然失败 —— 而这恰恰是最常见的排障现场。所以它们会自动改看
@@ -360,41 +425,61 @@ node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用�
 > 没有任何代码会再执行，也就不存在「下次启动发现桥还在、插件已不在、顺手还原」的机会。这是 DSH
 > 插件机制的硬限制，不是偷懒。
 
-**路径 A — 命令行（最干净，推荐）**
+**第 0 步 · 完全退出 DSH**：托盘图标右键 →「退出」。
 
-1. 完全退出 DSH（托盘 → 退出）。
-2. 撤桥并清掉备份（**在插件目录里执行**；`node` 不可用时见下方「手动操作」的两个前提）：
+> 运行中撤桥只能就地覆盖 100 MB+；退出后是整档替换，更快也更安全。
 
-   ```
-   node lib/bridge-cli.mjs uninstall
-   ```
+**路径 A · 命令行（推荐）**
 
-   > 装在 `Program Files` 这类目录时，这条命令要在**管理员终端**里执行（与首次安装同理）。
-3. 移除插件：在市场里点卸载即可；装了 npm 版 DSH CLI 的环境也可以执行
-   `dsh plugin --profile desktop remove dsh-window-control`（桌面版默认不带 `dsh` 命令）。
+第 1 步 · 撤桥并清掉备份 —— 复制这一行粘进 cmd 回车：
 
-`uninstall` 会把 `app.asar` 还原成原版**并删除 `app.asar.orig` 备份**（幂等，多跑无害）。
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" uninstall
+```
 
-**路径 B — 不用碰命令行**
+期望看到：
 
-1. 在 profile 的 `cordis.patch.yml` 里给本插件加一条（`id` 定位已加载的条目，`config` 覆盖配置）：
+```
+  [OK] 已还原为原始 app.asar；备份已清理
+桥状态      : 未安装
+```
 
-   ```yaml
-   - id: dsh-window-control
-     config:
-       autoInstall: false
-   ```
-2. 完全退出 DSH 并重新打开一次 —— 宿主半边会主动撤桥并清掉备份。
-3. 确认 DSH 已回到原版（`node lib/bridge-cli.mjs status` 显示「桥状态：未安装」才算撤干净）后，
-   再把插件从 profile 移除。
+> 可能要改两处：`dsh-primary-runtime`（用 `dir /b /ad "%USERPROFILE%\.dsh\dsh-runtimes"` 看实际目录名）、
+> profile 名 `desktop`。装在 `Program Files` 下要用**管理员** cmd。
+> `node` 已在 PATH 上的话，也可以 `cd` 到插件目录跑 `node lib\bridge-cli.mjs uninstall`。
 
-   > 「设置页里那一项消失」**不能**当判断依据：`autoInstall` 只关宿主半边，渲染端照常加载，
-   > 那一项会一直在，只是里面显示「窗口通道尚未生效」。
+第 2 步 · 移除插件：在市场里点卸载即可。
 
-**只想还原、暂时不删**：用 `node lib/bridge-cli.mjs restore`。它与 `uninstall` 的区别是
-**保留 `app.asar.orig` 备份**（方便日后重装）。`restore` 有护栏：归档没打过桥时**直接跳过、
-不写任何字节**（提示「当前归档未打过桥，无需还原」—— 这是正常返回，不是报错），避免把旧备份
-写回去造成「新 exe + 旧资源」的降级。
+**路径 B · 不碰命令行**
+
+第 1 步 · 给 profile 加一条配置。用记事本打开
+`%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`，在**末尾**追加四行：
+
+```yaml
+- id: dsh-window-control
+  config:
+    autoInstall: false
+```
+
+第 2 步 · 完全退出 DSH，再打开一次 —— 宿主半边会撤桥并删掉 `app.asar.orig`。
+
+第 3 步 · 确认撤干净（可选）：把路径 A 那条命令最后的 `uninstall` 换成 `status`，看到
+`桥状态      : 未安装` 即可。
+
+> 「设置页里那一项消失」**不能**当判断依据：`autoInstall` 只关宿主半边，渲染端照常加载，
+> 那一项会一直在，只是里面显示「窗口通道尚未生效」。
+
+第 4 步 · 在市场里卸载插件。
+
+**只想还原、暂时不删** —— 把路径 A 那条命令最后的 `uninstall` 换成 `restore`：
+
+```bat
+"%USERPROFILE%\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe" "%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-window-control\lib\bridge-cli.mjs" restore
+```
+
+它与 `uninstall` 的区别是**保留 `app.asar.orig` 备份**（方便日后重装）。`restore` 有护栏：
+归档没打过桥时**直接跳过、不写任何字节**（提示「当前归档未打过桥，无需还原」—— 这是正常返回，
+不是报错），避免把旧备份写回去造成「新 exe + 旧资源」的降级。
 
 > 懒得管那层桥也可以：只删插件、不撤桥也「能用」—— 桥留在 `app.asar` 里只是没人调用的死代码；
 > 而且 DSH 下次自动更新会整体替换 `app.asar`，桥自然就没了。只是那之前你的 `app.asar` 不是原版。
@@ -529,5 +614,6 @@ node _bridge-selftest.mjs   :: 桥引擎自测，当前 60/60 通过
 并发锁 / 符号预检 / 锚点漂移 / 权限不足。
 
 真实归档上的端到端验证另外做过：构建 / 自检 / 安装 / 回滚全部通过，
-全量逐条目 sha256 复算零不一致（条目数随 DSH 版本变化；用 `node lib/bridge-cli.mjs check` 可对你这一版复测，
-它的「其余 N 个条目不参与改动」一行就是当前条目数），且产物与早期 Python 版实现**逐字节完全相同**。
+全量逐条目 sha256 复算零不一致（条目数随 DSH 版本变化；对你这一版复测用 `bridge-cli check`，
+命令见「手动操作」，它的「其余 N 个条目不参与改动」一行就是当前条目数），
+且产物与早期 Python 版实现**逐字节完全相同**。
