@@ -42,12 +42,14 @@
 - 文档对齐：`lib/index.js` 与 `lib/asar-bridge.js` 头部的通道清单补上 minimize / top；
   README 说明 `locale/*.json` 是市场展示文案（界面文案在 `lib/client.js`）、
   `check` / `bench` 在校验备份、置顶偏好会被记住、头部哈希的两种定位方式；一并同步自测数字。
-- 修正安装 / 卸载说明里三个会真把人卡住的点：① 卸载路径 A 的命令默认 `node` 在 PATH、
+- 修正安装 / 卸载说明里四个会真把人卡住的点：① 卸载路径 A 的命令默认 `node` 在 PATH、
   且没写「在插件目录执行」——在 Windows 上 DSH 自己的 node 并不在 PATH，照抄会直接报
   「不是内部或外部命令」；② 路径 B 第 3 步原本用「设置页不再有本插件的入口」判断撤桥成功，
   但 `autoInstall` 只关宿主半边、渲染端照常加载，那一项永远不会消失，现改为看
   `bridge-cli status` 的「未安装」；③ 路径 B 第 1 步只给了行内 `config: {...}`，
-  没给 `- id:` 的完整 YAML 片段。
+  没给 `- id:` 的完整 YAML 片段；④ 安装第 1 步假设有 `dsh` 命令 —— 桌面版默认不带它
+  （PATH 里既没有 `dsh` 也没有 `node`），照抄只会得到「'dsh' 不是内部或外部命令」。
+  现改为「先在应用内插件市场安装，`dsh plugin` 仅适用于 npm 版 CLI」。
 - `bridge-cli status` 现在会真的打印「DSH 进程：运行中（就地覆盖）/ 未运行（整档替换）」——
   写入策略取决于它，README 里一直这么写，但之前那条信息并没有实现；`check` / `bench` 的
   输出也新增了「完整性：单块 SHA256 / 按 offset 定位 / 无完整性块」。

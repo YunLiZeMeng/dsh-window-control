@@ -26,7 +26,9 @@ Entry point: **Settings → Window & Quit**.
 
 **Install**
 
-1. Add the plugin (replace the profile name to match your setup):
+1. Add the plugin from the **in-app marketplace** (search `dsh-window-control`). The desktop app
+   does not ship a `dsh` command by default, so the CLI form below only applies to an npm-installed
+   DSH CLI (there, replace the profile name to match your setup):
 
    ```
    dsh plugin --profile desktop add dsh-window-control
@@ -87,7 +89,8 @@ plugin - order matters.
 2. Revert the bridge and clear the backup, from the plugin directory:
    `node lib/bridge-cli.mjs uninstall`.
    Under `Program Files` this needs an elevated terminal, same as the first install.
-3. Remove the plugin: `dsh plugin --profile desktop remove dsh-window-control`.
+3. Remove the plugin - from the marketplace, or with `dsh plugin --profile desktop remove
+   dsh-window-control` if you have the npm-installed CLI (the desktop app does not ship one).
 
 **Path B - no command line**
 
@@ -158,7 +161,9 @@ MIT licensed. The rest of this document is in Chinese and goes into more depth.
 
 按下面四步走：
 
-1. **安装插件**（在终端执行；按你的 DSH 配置把 `desktop` 换成实际 profile 名）：
+1. **安装插件**：在应用内的**插件市场**里搜 `dsh-window-control` 安装（推荐；桌面版默认不带 `dsh` 命令）。
+
+   如果你用的是 npm 版 DSH CLI，也可以在终端执行（把 `desktop` 换成实际 profile 名）：
 
    ```
    dsh plugin --profile desktop add dsh-window-control
@@ -365,11 +370,8 @@ node lib/bridge-cli.mjs bench       :: 测一次读取/构建耗时（排障用�
    ```
 
    > 装在 `Program Files` 这类目录时，这条命令要在**管理员终端**里执行（与首次安装同理）。
-3. 移除插件：
-
-   ```
-   dsh plugin --profile desktop remove dsh-window-control
-   ```
+3. 移除插件：在市场里点卸载即可；装了 npm 版 DSH CLI 的环境也可以执行
+   `dsh plugin --profile desktop remove dsh-window-control`（桌面版默认不带 `dsh` 命令）。
 
 `uninstall` 会把 `app.asar` 还原成原版**并删除 `app.asar.orig` 备份**（幂等，多跑无害）。
 
